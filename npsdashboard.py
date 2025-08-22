@@ -395,30 +395,71 @@ def calculate_nps_metrics(df):
     }
 
 def create_nps_gauge(nps_score):
-    """Create NPS gauge chart"""
+    """Create NPS gauge chart with better visibility"""
+    
+    # Determine colors based on NPS score
+    if nps_score >= 50:
+        bar_color = "#28a745"  # Green
+        status_color = "#28a745"
+        status_text = "EXCELLENT"
+    elif nps_score >= 0:
+        bar_color = "#fd7e14"  # Orange
+        status_color = "#fd7e14"
+        status_text = "FAIR"
+    else:
+        bar_color = "#dc3545"  # Red
+        status_color = "#dc3545"
+        status_text = "CRITICAL"
+    
     fig = go.Figure(go.Indicator(
         mode = "gauge+number+delta",
         value = nps_score,
         domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': "NPS Score"},
-        delta = {'reference': 0},
+        title = {'text': "NPS Score", 'font': {'size': 20}},
+        number = {'font': {'size': 40, 'color': status_color}},
+        delta = {'reference': 0, 'increasing': {'color': "#28a745"}, 'decreasing': {'color': "#dc3545"}},
         gauge = {
-            'axis': {'range': [-100, 100]},
-            'bar': {'color': "darkblue"},
+            'axis': {
+                'range': [-100, 100],
+                'tickwidth': 2,
+                'tickcolor': "black",
+                'tickmode': 'linear',
+                'tick0': -100,
+                'dtick': 25
+            },
+            'bar': {'color': bar_color, 'thickness': 0.3},
+            'bgcolor': "white",
+            'borderwidth': 2,
+            'bordercolor': "gray",
             'steps': [
-                {'range': [-100, 0], 'color': "lightgray"},
-                {'range': [0, 50], 'color': "gray"},
-                {'range': [50, 100], 'color': "lightgreen"}
+                {'range': [-100, -50], 'color': "#ffcdd2"},   # Light red
+                {'range': [-50, 0], 'color': "#ffecb3"},      # Light orange  
+                {'range': [0, 30], 'color': "#f3e5f5"},       # Light purple
+                {'range': [30, 50], 'color': "#e1f5fe"},      # Light blue
+                {'range': [50, 100], 'color': "#c8e6c9"}      # Light green
             ],
             'threshold': {
                 'line': {'color': "red", 'width': 4},
-                'thickness': 0.75,
-                'value': 90
+                'thickness': 0.8,
+                'value': nps_score  # Point to actual score
             }
         }
     ))
     
-    fig.update_layout(height=400)
+    # Add annotations for better understanding
+    fig.add_annotation(
+        x=0.5, y=0.1,
+        text=f"Status: {status_text}",
+        showarrow=False,
+        font=dict(size=14, color=status_color, weight="bold")
+    )
+    
+    fig.update_layout(
+        height=400,
+        font=dict(color="black", size=12),
+        margin=dict(l=50, r=50, t=80, b=50)
+    )
+    
     return fig
 
 def file_upload_section():
@@ -621,18 +662,38 @@ def main():
             st.plotly_chart(create_nps_gauge(metrics_filtered['nps_score']), use_container_width=True)
         
         with col2:
-            # NPS Distribution
+            # NPS Distribution with correct colors
             nps_counts = df_filtered['NPS_Category'].value_counts()
             fig_pie = px.pie(
                 values=nps_counts.values,
                 names=nps_counts.index,
                 title="NPS Distribution",
                 color_discrete_map={
-                    'Promoter': '#2ecc71',
-                    'Passive': '#f39c12',
-                    'Detractor': '#e74c3c'
+                    'Detractor': '#dc3545',   # Red
+                    'Passive': '#fd7e14',     # Orange  
+                    'Promoter': '#28a745'     # Green
                 }
             )
+            
+            # Add custom styling
+            fig_pie.update_traces(
+                textposition='inside', 
+                textinfo='percent+label',
+                hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
+            )
+            
+            fig_pie.update_layout(
+                showlegend=True,
+                legend=dict(
+                    orientation="v",
+                    yanchor="middle",
+                    y=0.5,
+                    xanchor="left",
+                    x=1.05
+                ),
+                font=dict(size=12)
+            )
+            
             st.plotly_chart(fig_pie, use_container_width=True)
         
         # Rating Distribution
