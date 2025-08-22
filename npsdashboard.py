@@ -395,7 +395,7 @@ def calculate_nps_metrics(df):
     }
 
 def create_nps_gauge(nps_score):
-    """Create NPS gauge chart with better visibility"""
+    """Create NPS gauge chart with better layout"""
     
     # Determine colors based on NPS score
     if nps_score >= 50:
@@ -412,52 +412,65 @@ def create_nps_gauge(nps_score):
         status_text = "CRITICAL"
     
     fig = go.Figure(go.Indicator(
-        mode = "gauge+number+delta",
+        mode = "gauge+number",  # Removed delta to avoid overlap
         value = nps_score,
         domain = {'x': [0, 1], 'y': [0, 1]},
-        title = {'text': "NPS Score", 'font': {'size': 20}},
-        number = {'font': {'size': 40, 'color': status_color}},
-        delta = {'reference': 0, 'increasing': {'color': "#28a745"}, 'decreasing': {'color': "#dc3545"}},
+        title = {
+            'text': "NPS Score", 
+            'font': {'size': 18, 'color': 'black'}
+        },
+        number = {
+            'font': {'size': 36, 'color': status_color},
+            'suffix': "",
+            'prefix': ""
+        },
         gauge = {
             'axis': {
                 'range': [-100, 100],
                 'tickwidth': 2,
-                'tickcolor': "black",
-                'tickmode': 'linear',
-                'tick0': -100,
-                'dtick': 25
+                'tickcolor': "darkgray",
+                'tickmode': 'array',
+                'tickvals': [-100, -50, 0, 50, 100],
+                'ticktext': ['-100', '-50', '0', '50', '100']
             },
-            'bar': {'color': bar_color, 'thickness': 0.3},
+            'bar': {
+                'color': bar_color, 
+                'thickness': 0.25
+            },
             'bgcolor': "white",
             'borderwidth': 2,
-            'bordercolor': "gray",
+            'bordercolor': "lightgray",
             'steps': [
-                {'range': [-100, -50], 'color': "#ffcdd2"},   # Light red
-                {'range': [-50, 0], 'color': "#ffecb3"},      # Light orange  
-                {'range': [0, 30], 'color': "#f3e5f5"},       # Light purple
-                {'range': [30, 50], 'color': "#e1f5fe"},      # Light blue
-                {'range': [50, 100], 'color': "#c8e6c9"}      # Light green
+                {'range': [-100, -50], 'color': "#ffebee"},   # Very light red
+                {'range': [-50, 0], 'color': "#fff3e0"},      # Very light orange
+                {'range': [0, 30], 'color': "#f3e5f5"},       # Very light purple
+                {'range': [30, 50], 'color': "#e1f5fe"},      # Very light blue
+                {'range': [50, 100], 'color': "#e8f5e8"}      # Very light green
             ],
             'threshold': {
-                'line': {'color': "red", 'width': 4},
-                'thickness': 0.8,
-                'value': nps_score  # Point to actual score
+                'line': {'color': status_color, 'width': 3},
+                'thickness': 0.75,
+                'value': nps_score
             }
         }
     ))
     
-    # Add annotations for better understanding
+    # Add status text BELOW the gauge (no overlap)
     fig.add_annotation(
-        x=0.5, y=0.1,
-        text=f"Status: {status_text}",
+        x=0.5, 
+        y=0.05,  # Lower position
+        text=f"<b>{status_text}</b>",
         showarrow=False,
-        font=dict(size=14, color=status_color, weight="bold")
+        font=dict(size=16, color=status_color),
+        xanchor="center"
     )
     
     fig.update_layout(
-        height=400,
+        height=350,  # Slightly shorter
         font=dict(color="black", size=12),
-        margin=dict(l=50, r=50, t=80, b=50)
+        margin=dict(l=40, r=40, t=60, b=40),
+        paper_bgcolor="white",
+        plot_bgcolor="white"
     )
     
     return fig
@@ -662,36 +675,49 @@ def main():
             st.plotly_chart(create_nps_gauge(metrics_filtered['nps_score']), use_container_width=True)
         
         with col2:
-            # NPS Distribution with correct colors
+            # NPS Distribution with FORCED correct colors
             nps_counts = df_filtered['NPS_Category'].value_counts()
-            fig_pie = px.pie(
-                values=nps_counts.values,
-                names=nps_counts.index,
-                title="NPS Distribution",
-                color_discrete_map={
-                    'Detractor': '#dc3545',   # Red
-                    'Passive': '#fd7e14',     # Orange  
-                    'Promoter': '#28a745'     # Green
-                }
-            )
             
-            # Add custom styling
+            # Manual color assignment
+            colors = []
+            for category in nps_counts.index:
+                if category == 'Detractor':
+                    colors.append('#dc3545')  # Red
+                elif category == 'Promoter':
+                    colors.append('#28a745')  # Green
+                elif category == 'Passive':
+                    colors.append('#fd7e14')  # Orange
+                else:
+                    colors.append('#gray')    # Fallback
+            
+            fig_pie = go.Figure(data=[go.Pie(
+                labels=nps_counts.index,
+                values=nps_counts.values,
+                marker=dict(colors=colors, line=dict(color='#FFFFFF', width=2))
+            )])
+            
             fig_pie.update_traces(
-                textposition='inside', 
+                textposition='inside',
                 textinfo='percent+label',
                 hovertemplate='<b>%{label}</b><br>Count: %{value}<br>Percentage: %{percent}<extra></extra>'
             )
             
             fig_pie.update_layout(
+                title={
+                    'text': "NPS Distribution",
+                    'x': 0.5,
+                    'xanchor': 'center'
+                },
                 showlegend=True,
                 legend=dict(
                     orientation="v",
-                    yanchor="middle",
+                    yanchor="middle", 
                     y=0.5,
                     xanchor="left",
-                    x=1.05
+                    x=1.02
                 ),
-                font=dict(size=12)
+                font=dict(size=12),
+                margin=dict(t=60, b=40, l=40, r=120)
             )
             
             st.plotly_chart(fig_pie, use_container_width=True)
@@ -901,4 +927,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
